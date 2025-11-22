@@ -19,6 +19,7 @@ export default class DownloadUI {
     this.downloadDirectoryStructure = null;
     this.resultsListChangeListener = null;
     this._isExtracting = false;
+    this.downloadOptionsState = null;
     this._setupEventListeners();
     if (window.electronAPI && window.electronAPI.onExtractionStarted) {
       window.electronAPI.onExtractionStarted(() => {
@@ -88,11 +89,138 @@ export default class DownloadUI {
       resultsSelectedCount: document.getElementById('results-selected-count'),
       createSubfolderCheckbox: document.getElementById('create-subfolder-checkbox'),
       createSubfolderLabel: document.querySelector('label[for="create-subfolder-checkbox"]'),
+      maintainFolderStructureCheckbox: document.getElementById('maintain-folder-structure-checkbox'),
       throttleDownloadCheckbox: document.getElementById('throttle-download-checkbox'),
       throttleSpeedInput: document.getElementById('throttle-speed-input'),
       throttleUnitSelect: document.getElementById('throttle-unit-select'),
     };
   }
+
+  /**
+   * Retrieves all DOM elements related to the download options.
+   * @returns {object} An object containing the download option elements.
+   * @private
+   */
+  _getDownloadOptionsElements() {
+    const {
+      maintainFolderStructureCheckbox,
+      createSubfolderCheckbox,
+      throttleDownloadCheckbox,
+      throttleSpeedInput,
+      throttleUnitSelect,
+    } = this._getElements();
+
+    return {
+      maintainFolderStructureCheckbox,
+      createSubfolderCheckbox,
+      extractArchivesCheckbox: document.getElementById('extract-archives-checkbox'),
+      extractPreviouslyDownloadedCheckbox: document.getElementById('extract-previously-downloaded-checkbox'),
+      throttleDownloadCheckbox,
+      throttleSpeedInput,
+      throttleUnitSelect,
+    };
+  }
+
+  /**
+   * Saves the current state of download options and disables them.
+   * @private
+   */
+  _disableDownloadOptions() {
+    const els = this._getDownloadOptionsElements();
+    const controlsToSave = {
+      maintain: els.maintainFolderStructureCheckbox,
+      subfolder: els.createSubfolderCheckbox,
+      extract: els.extractArchivesCheckbox,
+      extractPrev: els.extractPreviouslyDownloadedCheckbox,
+      throttle: els.throttleDownloadCheckbox,
+      throttleSpeed: els.throttleSpeedInput,
+      throttleUnit: els.throttleUnitSelect,
+    };
+
+    this.downloadOptionsState = {};
+    for (const key in controlsToSave) {
+      const control = controlsToSave[key];
+      if (control) {
+        this.downloadOptionsState[key] = {
+          checked: control.checked,
+          disabled: control.disabled,
+          value: control.value,
+        };
+        control.disabled = true;
+        if (!key.startsWith('throttle')) {
+          const label = control.closest('label');
+          if (label) {
+            label.classList.add('disabled-option');
+          }
+        }
+      }
+    }
+
+    const throttleContainer = document.getElementById('throttle-container');
+    if (throttleContainer) {
+      throttleContainer.classList.add('disabled-option');
+    }
+    if (els.throttleSpeedInput && els.throttleUnitSelect) {
+      els.throttleSpeedInput.classList.add('force-no-opacity');
+      els.throttleUnitSelect.classList.add('force-no-opacity');
+    }
+  }
+
+  /**
+   * Restores the saved state of the download options.
+   * @private
+   */
+  _restoreDownloadOptions() {
+    if (!this.downloadOptionsState) return;
+
+    const els = this._getDownloadOptionsElements();
+    const controlMap = {
+      maintain: els.maintainFolderStructureCheckbox,
+      subfolder: els.createSubfolderCheckbox,
+      extract: els.extractArchivesCheckbox,
+      extractPrev: els.extractPreviouslyDownloadedCheckbox,
+      throttle: els.throttleDownloadCheckbox,
+      throttleSpeed: els.throttleSpeedInput,
+      throttleUnit: els.throttleUnitSelect,
+    };
+
+    for (const key in this.downloadOptionsState) {
+      const control = controlMap[key];
+      const savedState = this.downloadOptionsState[key];
+      if (control && savedState) {
+        control.checked = savedState.checked;
+        control.disabled = savedState.disabled;
+        if (typeof savedState.value !== 'undefined') {
+          control.value = savedState.value;
+        }
+        if (!key.startsWith('throttle')) {
+          const label = control.closest('label');
+          if (label) {
+            if (key === 'extractPrev') {
+              const extractCheckbox = controlMap.extract;
+              if (extractCheckbox) {
+                label.classList.toggle('disabled-option', !extractCheckbox.checked || savedState.disabled);
+              }
+            } else {
+              label.classList.toggle('disabled-option', savedState.disabled);
+            }
+          }
+        }
+      }
+    }
+
+    const throttleContainer = document.getElementById('throttle-container');
+    if (throttleContainer) {
+      throttleContainer.classList.remove('disabled-option');
+    }
+    if (els.throttleSpeedInput && els.throttleUnitSelect) {
+      els.throttleSpeedInput.classList.remove('force-no-opacity');
+      els.throttleUnitSelect.classList.remove('force-no-opacity');
+    }
+
+    this.downloadOptionsState = null;
+  }
+
 
   /**
    * Updates the displayed count of selected results.
@@ -212,6 +340,9 @@ export default class DownloadUI {
     elements.createSubfolderCheckbox.disabled = false;
     this.stateService.set('createSubfolder', false);
 
+    elements.maintainFolderStructureCheckbox.checked = false;
+    this.stateService.set('maintainFolderStructure', false);
+
     const throttleDownloadCheckbox = document.getElementById('throttle-download-checkbox');
     const throttleSpeedInput = document.getElementById('throttle-speed-input');
     const throttleUnitSelect = document.getElementById('throttle-unit-select');
@@ -306,15 +437,18 @@ export default class DownloadUI {
 
     const downloadPath = this.stateService.get('downloadDirectory');
     const createSubfolder = this.stateService.get('createSubfolder');
+    const maintainFolderStructure = this.stateService.get('maintainFolderStructure');
+    const isCreatingSubfolders = createSubfolder || maintainFolderStructure;
+
     const currentStructure = await this.apiService.checkDownloadDirectoryStructure(downloadPath);
 
     let shouldProceed = true;
     let confirmationMessage = '';
 
-    if (currentStructure === this.downloadDirectoryStructure.FLAT && createSubfolder) {
+    if (currentStructure === this.downloadDirectoryStructure.FLAT && isCreatingSubfolders) {
       confirmationMessage = `The target directory "${downloadPath}" contains flat files, but you have selected to create subfolders. Do you want to continue?`;
       shouldProceed = false;
-    } else if (currentStructure === this.downloadDirectoryStructure.SUBFOLDERS && !createSubfolder) {
+    } else if (currentStructure === this.downloadDirectoryStructure.SUBFOLDERS && !isCreatingSubfolders) {
       confirmationMessage = `The target directory "${downloadPath}" contains subfolders, but you have selected to download files directly. Do you want to continue?`;
       shouldProceed = false;
     } else if (currentStructure === this.downloadDirectoryStructure.MIXED) {
@@ -329,6 +463,7 @@ export default class DownloadUI {
       }
     }
 
+    this._disableDownloadOptions();
     this.stateService.set('isDownloading', true);
     this.stateService.set('downloadStartTime', Date.now());
     this.stateService.set('totalBytesDownloadedThisSession', 0);
@@ -362,10 +497,7 @@ export default class DownloadUI {
     elements.extractionProgressBar.classList.add('hidden');
     elements.overallExtractionProgressBar.classList.add('hidden');
 
-    const isThrottlingEnabled = this.stateService.get('isThrottlingEnabled');
-    const throttleSpeed = this.stateService.get('throttleSpeed');
-    const throttleUnit = this.stateService.get('throttleUnit');
-    this.apiService.startDownload(this.stateService.get('selectedResults'), isThrottlingEnabled, throttleSpeed, throttleUnit);
+    this.apiService.startDownload(this.stateService.get('selectedResults'));
   }
 
   /**
@@ -424,7 +556,13 @@ export default class DownloadUI {
     });
 
     document.addEventListener('change', (e) => {
-      const { throttleDownloadCheckbox, throttleSpeedInput, throttleUnitSelect } = this._getElements();
+      const {  
+        throttleSpeedInput, 
+        throttleUnitSelect, 
+        createSubfolderCheckbox, 
+        maintainFolderStructureCheckbox 
+      } = this._getElements();
+
       if (e.target.id === 'throttle-download-checkbox') {
         const isThrottlingEnabled = e.target.checked;
         throttleSpeedInput.disabled = !isThrottlingEnabled;
@@ -444,10 +582,38 @@ export default class DownloadUI {
         this.stateService.set('throttleUnit', e.target.value);
       }
 
-      const elements = this._getElements();
       if (e.target.id === 'create-subfolder-checkbox' && !e.target.disabled) {
-        this.stateService.set('createSubfolder', e.target.checked);
+        const isChecked = e.target.checked;
+        this.stateService.set('createSubfolder', isChecked);
+        if (maintainFolderStructureCheckbox) {
+            maintainFolderStructureCheckbox.disabled = isChecked;
+            const label = maintainFolderStructureCheckbox.closest('label');
+            if(label) {
+                label.classList.toggle('disabled-option', isChecked);
+            }
+            if (isChecked) {
+                maintainFolderStructureCheckbox.checked = false;
+                this.stateService.set('maintainFolderStructure', false);
+            }
+        }
       }
+
+      if (e.target.id === 'maintain-folder-structure-checkbox' && !e.target.disabled) {
+        const isChecked = e.target.checked;
+        this.stateService.set('maintainFolderStructure', isChecked);
+        if (createSubfolderCheckbox) {
+            createSubfolderCheckbox.disabled = isChecked;
+            const label = createSubfolderCheckbox.closest('label');
+            if (label) {
+                label.classList.toggle('disabled-option', isChecked);
+            }
+            if (isChecked) {
+                createSubfolderCheckbox.checked = false;
+                this.stateService.set('createSubfolder', false);
+            }
+        }
+      }
+      
       if (e.target.id === 'extract-archives-checkbox') {
         const extractPreviouslyDownloadedCheckbox = document.getElementById('extract-previously-downloaded-checkbox');
         if (extractPreviouslyDownloadedCheckbox) {
@@ -526,6 +692,7 @@ export default class DownloadUI {
     });
 
     window.electronAPI.onDownloadComplete((summary) => {
+      this._restoreDownloadOptions();
       const elements = this._getElements();
       if (!elements.fileProgressContainer) return;
       elements.fileProgressContainer.classList.add('hidden');

@@ -4,6 +4,7 @@ import https from 'https';
 import { URL } from 'url';
 import axios from 'axios';
 import { Throttle } from '@kldzj/stream-throttle';
+import FileSystemService from './FileSystemService.js';
 
 /**
  * Service responsible for handling the actual downloading of files.
@@ -53,15 +54,16 @@ class DownloadService {
    * @param {number} totalSize The total size of all files to be downloaded (including already downloaded parts).
    * @param {number} [initialDownloadedSize=0] The size of files already downloaded or skipped initially.
    * @param {boolean} [createSubfolder=false] Whether to create subfolders for each download.
+   * @param {boolean} [maintainFolderStructure=false] Whether to maintain the site's folder structure.
    * @param {number} totalFilesOverall The total number of files initially considered for download.
    * @param {number} initialSkippedFileCount The number of files initially skipped.
    * @param {boolean} isThrottlingEnabled Whether to enable download throttling.
    * @param {number} throttleSpeed The download speed limit in MB/s.
    * @param {string} throttleUnit The unit for the download speed limit (KB/s or MB/s).
-   * @returns {Promise<{skippedFiles: Array<string>}>} A promise that resolves with an object containing any skipped files.
+   * @returns {Promise<{skippedFiles: Array<string>, downloadedFiles: Array<object>}>} A promise that resolves with an object containing any skipped files and successfully downloaded files.
    * @throws {Error} If the download is cancelled between files or mid-file.
    */
-  async downloadFiles(win, baseUrl, files, targetDir, totalSize, initialDownloadedSize = 0, createSubfolder = false, totalFilesOverall, initialSkippedFileCount, isThrottlingEnabled = false, throttleSpeed = 10, throttleUnit = 'MB/s') {
+  async downloadFiles(win, baseUrl, files, targetDir, totalSize, initialDownloadedSize = 0, createSubfolder = false, maintainFolderStructure = false, totalFilesOverall, initialSkippedFileCount, isThrottlingEnabled = false, throttleSpeed = 10, throttleUnit = 'MB/s') {
     const session = axios.create({
       httpsAgent: this.httpAgent,
       timeout: 15000,
@@ -73,6 +75,7 @@ class DownloadService {
     let totalDownloaded = initialDownloadedSize;
     let totalBytesFailed = 0;
     const skippedFiles = [];
+    const downloadedFiles = [];
     let lastDownloadProgressUpdateTime = 0;
 
     for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
@@ -84,22 +87,17 @@ class DownloadService {
       if (fileInfo.skip) continue;
 
       const filename = fileInfo.name;
-      let finalTargetDir = targetDir;
+      const { targetPath } = FileSystemService.calculatePaths(targetDir, fileInfo, { createSubfolder, maintainFolderStructure, baseUrl });
 
-      if (createSubfolder) {
-        const gameName = path.parse(filename).name;
-        finalTargetDir = path.join(targetDir, gameName);
-
-        if (!fs.existsSync(finalTargetDir)) {
-          try {
-            fs.mkdirSync(finalTargetDir, { recursive: true });
-          } catch (mkdirErr) {
-            this.downloadConsole.logCreatingSubfolderError(finalTargetDir, mkdirErr.message);
-          }
+      const finalDir = path.dirname(targetPath);
+      if (!fs.existsSync(finalDir)) {
+        try {
+          fs.mkdirSync(finalDir, { recursive: true });
+        } catch (mkdirErr) {
+          this.downloadConsole.logCreatingSubfolderError(finalDir, mkdirErr.message);
         }
       }
 
-      const targetPath = path.join(finalTargetDir, filename);
       const fileUrl = fileInfo.href;
       const fileSize = fileInfo.size || 0;
       let fileDownloaded = fileInfo.downloadedBytes || 0;
@@ -198,6 +196,7 @@ class DownloadService {
           });
 
           writer.on('finish', () => {
+            downloadedFiles.push({ ...fileInfo, path: targetPath });
             resolve();
           });
           writer.on('error', (err) => {
@@ -236,7 +235,7 @@ class DownloadService {
       }
     }
 
-    return { skippedFiles };
+    return { skippedFiles, downloadedFiles };
   }
 }
 
