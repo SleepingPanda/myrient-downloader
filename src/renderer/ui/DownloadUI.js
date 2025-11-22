@@ -19,6 +19,7 @@ export default class DownloadUI {
     this.downloadDirectoryStructure = null;
     this.resultsListChangeListener = null;
     this._isExtracting = false;
+    this.downloadOptionsState = null;
     this._setupEventListeners();
     if (window.electronAPI && window.electronAPI.onExtractionStarted) {
       window.electronAPI.onExtractionStarted(() => {
@@ -94,6 +95,132 @@ export default class DownloadUI {
       throttleUnitSelect: document.getElementById('throttle-unit-select'),
     };
   }
+
+  /**
+   * Retrieves all DOM elements related to the download options.
+   * @returns {object} An object containing the download option elements.
+   * @private
+   */
+  _getDownloadOptionsElements() {
+    const {
+      maintainFolderStructureCheckbox,
+      createSubfolderCheckbox,
+      throttleDownloadCheckbox,
+      throttleSpeedInput,
+      throttleUnitSelect,
+    } = this._getElements();
+
+    return {
+      maintainFolderStructureCheckbox,
+      createSubfolderCheckbox,
+      extractArchivesCheckbox: document.getElementById('extract-archives-checkbox'),
+      extractPreviouslyDownloadedCheckbox: document.getElementById('extract-previously-downloaded-checkbox'),
+      throttleDownloadCheckbox,
+      throttleSpeedInput,
+      throttleUnitSelect,
+    };
+  }
+
+  /**
+   * Saves the current state of download options and disables them.
+   * @private
+   */
+  _disableDownloadOptions() {
+    const els = this._getDownloadOptionsElements();
+    const controlsToSave = {
+      maintain: els.maintainFolderStructureCheckbox,
+      subfolder: els.createSubfolderCheckbox,
+      extract: els.extractArchivesCheckbox,
+      extractPrev: els.extractPreviouslyDownloadedCheckbox,
+      throttle: els.throttleDownloadCheckbox,
+      throttleSpeed: els.throttleSpeedInput,
+      throttleUnit: els.throttleUnitSelect,
+    };
+
+    this.downloadOptionsState = {};
+    for (const key in controlsToSave) {
+      const control = controlsToSave[key];
+      if (control) {
+        this.downloadOptionsState[key] = {
+          checked: control.checked,
+          disabled: control.disabled,
+          value: control.value,
+        };
+        control.disabled = true;
+        if (!key.startsWith('throttle')) {
+          const label = control.closest('label');
+          if (label) {
+            label.classList.add('disabled-option');
+          }
+        }
+      }
+    }
+
+    const throttleContainer = document.getElementById('throttle-container');
+    if (throttleContainer) {
+      throttleContainer.classList.add('disabled-option');
+    }
+    if (els.throttleSpeedInput && els.throttleUnitSelect) {
+      els.throttleSpeedInput.classList.add('force-no-opacity');
+      els.throttleUnitSelect.classList.add('force-no-opacity');
+    }
+  }
+
+  /**
+   * Restores the saved state of the download options.
+   * @private
+   */
+  _restoreDownloadOptions() {
+    if (!this.downloadOptionsState) return;
+
+    const els = this._getDownloadOptionsElements();
+    const controlMap = {
+      maintain: els.maintainFolderStructureCheckbox,
+      subfolder: els.createSubfolderCheckbox,
+      extract: els.extractArchivesCheckbox,
+      extractPrev: els.extractPreviouslyDownloadedCheckbox,
+      throttle: els.throttleDownloadCheckbox,
+      throttleSpeed: els.throttleSpeedInput,
+      throttleUnit: els.throttleUnitSelect,
+    };
+
+    for (const key in this.downloadOptionsState) {
+      const control = controlMap[key];
+      const savedState = this.downloadOptionsState[key];
+      if (control && savedState) {
+        control.checked = savedState.checked;
+        control.disabled = savedState.disabled;
+        if (typeof savedState.value !== 'undefined') {
+          control.value = savedState.value;
+        }
+        if (!key.startsWith('throttle')) {
+          const label = control.closest('label');
+          if (label) {
+            if (key === 'extractPrev') {
+              const extractCheckbox = controlMap.extract;
+              if (extractCheckbox) {
+                label.classList.toggle('disabled-option', !extractCheckbox.checked || savedState.disabled);
+              }
+            } else {
+              label.classList.toggle('disabled-option', savedState.disabled);
+            }
+          }
+        }
+      }
+    }
+
+    const throttleContainer = document.getElementById('throttle-container');
+    if (throttleContainer) {
+      throttleContainer.classList.remove('disabled-option');
+    }
+    if (els.throttleSpeedInput && els.throttleUnitSelect) {
+      els.throttleSpeedInput.classList.remove('force-no-opacity');
+      els.throttleUnitSelect.classList.remove('force-no-opacity');
+    }
+
+    this.downloadOptionsState = null;
+  }
+
 
   /**
    * Updates the displayed count of selected results.
@@ -336,6 +463,7 @@ export default class DownloadUI {
       }
     }
 
+    this._disableDownloadOptions();
     this.stateService.set('isDownloading', true);
     this.stateService.set('downloadStartTime', Date.now());
     this.stateService.set('totalBytesDownloadedThisSession', 0);
@@ -564,6 +692,7 @@ export default class DownloadUI {
     });
 
     window.electronAPI.onDownloadComplete((summary) => {
+      this._restoreDownloadOptions();
       const elements = this._getElements();
       if (!elements.fileProgressContainer) return;
       elements.fileProgressContainer.classList.add('hidden');
