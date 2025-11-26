@@ -1,4 +1,3 @@
-
 /**
  * Calculates the estimated time remaining (ETA) for a task.
  * @param {number} current The current progress of the task.

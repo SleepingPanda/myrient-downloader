@@ -1,4 +1,3 @@
-
 /**
  * Formats a number of bytes into a human-readable string (e.g., "1.2 GB", "500 MB").
  * @param {number} bytes The number of bytes to format.

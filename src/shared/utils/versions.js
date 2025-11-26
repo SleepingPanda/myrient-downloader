@@ -1,4 +1,3 @@
-
 /**
  * Compares two semantic version strings.
  * @param {string} v1 The first version string.
