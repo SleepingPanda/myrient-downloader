@@ -3,11 +3,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  getMyrientBaseUrl: () => ipcRenderer.invoke('get-myrient-base-url'),
   getMainArchives: () => ipcRenderer.invoke('get-main-archives'),
   getDirectoryList: (archiveUrl) => ipcRenderer.invoke('get-directory-list', archiveUrl),
   scrapeAndParseFiles: (pageUrl) => ipcRenderer.invoke('scrape-and-parse-files', pageUrl),
-  filterFiles: (files, allTags, filters) => ipcRenderer.invoke('filter-files', files, allTags, filters),
+  filterFiles: (files, filters) => ipcRenderer.invoke('filter-files', files, filters),
 
   getDownloadDirectory: () => ipcRenderer.invoke('get-download-directory'),
   checkDownloadDirectoryStructure: (downloadPath) => ipcRenderer.invoke('check-download-directory-structure', downloadPath),
@@ -15,7 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   startDownload: (baseUrl, files, targetDir, createSubfolder, maintainFolderStructure, extractAndDelete, extractPreviouslyDownloaded, isThrottlingEnabled, throttleSpeed, throttleUnit) => ipcRenderer.invoke('start-download', baseUrl, files, targetDir, createSubfolder, maintainFolderStructure, extractAndDelete, extractPreviouslyDownloaded, isThrottlingEnabled, throttleSpeed, throttleUnit),
   cancelDownload: () => ipcRenderer.send('cancel-download'),
-  deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath),
 
   openExternal: (url) => ipcRenderer.send('open-external', url),
   openDirectory: (path) => ipcRenderer.send('open-directory', path),
@@ -31,8 +29,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getZoomFactor: () => ipcRenderer.invoke('get-zoom-factor'),
   setZoomFactor: (factor) => ipcRenderer.send('set-zoom-factor', factor),
 
-  log: (level, message) => ipcRenderer.send('log-message', level, message),
-
   onDownloadScanProgress: (callback) => ipcRenderer.on('download-scan-progress', (event, data) => callback(data)),
   onDownloadOverallProgress: (callback) => ipcRenderer.on('download-overall-progress', (event, data) => callback(data)),
   onDownloadFileProgress: (callback) => ipcRenderer.on('download-file-progress', (event, data) => callback(data)),
@@ -43,7 +39,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onExtractionProgress: (callback) => ipcRenderer.on('extraction-progress', (event, data) => callback(data)),
   onHideDownloadUi: (callback) => ipcRenderer.on('hide-download-ui', (event) => callback()),
 
-  formatBytes: (bytes, decimals) => ipcRenderer.invoke('format-bytes', bytes, decimals),
-
-  readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
 });
