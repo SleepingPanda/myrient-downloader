@@ -22,10 +22,12 @@ Please consider donating to support my work and Myrient's service.
 The Myrient Downloader provides a seamless process for creating curated game collections:
 1.  **Browse and Select:** Allows users to easily browse and search the entire Myrient catalog of archives (e.g., No-Intro, MAME) and drill down into specific systems or categories.
 2.  **Optionally Filter and Curate:** Presents a powerful wizard to filter thousands of files down to a specific list based on custom rules:
-    * **Exclude/Include Tags:** Filter files by region or language tag (e.g., keep only `(USA)`).
+    * **Include/Exclude Tags:** Filter files by region or language tag (e.g., keep only `(USA)`).
     * **Revision Control:** Automatically select only the single highest revision of every game title.
     * **Multi-Disc/Cart:** Automatically download all discs or cartridges for a given title.
     * **Priority De-duplication:** Allows the user to build a priority list of tags to select the *best* version when multiple unique copies of a game exist.
+    * **Include/Exclude String Filters:** Create custom lists of strings to match titles to include and exclude.
+    * **Save/Import/Export Filtering Presets:** Save your filtering options as presets to re-use them or share them with friends. All filtering options are included.
     * **Skip The Filtering:** Don't need to filter? Go ahead and skip it! Archives that don't support tags will skip the filtering automatically.
 3.  **Download:** Executes the download of the final, filtered list of files.
     * **Include/Exclude Individual Titles:** Toggle download for titles on and off individually.
@@ -33,12 +35,15 @@ The Myrient Downloader provides a seamless process for creating curated game col
     * **Extract Archives:** Automatically extract files and delete the original archives. It will even do this for things you previously downloaded.
     * **Control Download Speed:** Throttle download speeds to download in the background without saturating your bandwidth.
 4.  **Manage Progress:** Displays a live overall size-based progress bar with an **accurate time remaining estimate**. It handles file skipping for existing archives and provides a safe cancellation will delete incomplete files.
-    * **Smart Resuming:** The application **scans for existing local files** and automatically resumes the download from the point it left off. Files that are fully downloaded are skipped, ensuring efficient use of bandwidth. This also works for extraction.
+    * **Skip The Scan:** If you're not bothered about accurate file size estimates, download times or resuming incomplete downloads you can skip the pre-download scan and start downloading more quickly.
+    * **Smart Resuming:** The application can **scan for existing local files** and automatically resume the download from the point it left off (even if you didn't scan when you first started downloading). Files that are fully downloaded are skipped, ensuring efficient use of bandwidth. This also works for extraction.
+    * **Partial File Notation:** Files that are partially downloaded or extracted will be marked with a `.part` extension; allowing you to start moving your files around with confidence that they're complete.
 5. **Quality of Life:** A variety of features and visual queues help you to use the application.
    * **Tooltips:** Helpful informative tooltips are scattered across the UI to help explain how things work.
    * **Update Notification:** Get notified when a new version is available for download.
    * **Settings Menu:** A settings menu lets you check for updates and adjust application zoom levels for better support across a variety of displays.
    * **Keyboard Navigation:** Using your arrow keys and enter you can navigate many of the UI elements quickly and efficiently.
+   * **Toast Notification:** Little pop-ups that confirm whether actions were successful or unsuccessful.
 
 *And much, much more...*
   
@@ -51,17 +56,23 @@ The Myrient Downloader provides a seamless process for creating curated game col
 ![Directory Selection](screenshots/select-directory.png)
 *Select your directory.*
 
-![Filtering Wizard (1/2)](screenshots/filtering-wizard-1.png)
-*Include/exclude tags.*
+![Filtering Wizard (1/3)](screenshots/filtering-wizard-1.png)
+*Load a Preset or Include/exclude tags.*
 
-![Filtering Wizard (2/2)](screenshots/filtering-wizard-2.png)
-*Set your filtering preferences and prioritise your tags.*
+![Filtering Wizard (2/3)](screenshots/filtering-wizard-2.png)
+*Include/exclude strings and set your filtering preferences.*
 
-![Results Page](screenshots/final-result.png)
+![Filtering Wizard (3/3)](screenshots/filtering-wizard-3.png)
+*Prioritise your tags, save your preset and apply your filters.*
+
+![Results Page (1/3)](screenshots/final-result-1.png)
 *Select your titles.*
 
-![Download Options & Progesss Bar](screenshots/download-extract.png)
-*Configure your download options and monitor progress.*
+![Results Page (2/3)](screenshots/final-result-2.png)
+*Configure your download options.*
+
+![Results Page (3/3)](screenshots/final-result-3.png)
+*Monitor your progress.*
 
 ![Folder Structure Mismatch](screenshots/structure-mismatch.png)
 *Warnings when target directories differ from your desired folder structure.*
@@ -75,11 +86,16 @@ The Myrient Downloader provides a seamless process for creating curated game col
 ![Settings Menu](screenshots/settings-menu.png)
 *Check for updates or adjust zoom levels.*
 
+![Manage Presets](screenshots/manage-presets.png)
+*Import, export or delete your presets.*
+
 ***
 
 ## Requirements & Installation (Source Code)
 
 **This section is for developers or users who want to run the application from the source code (instead of downloading a pre-compiled executable), or build their own executable.**
+
+**Reccomended Node Version:** 20.9.0
 
 1.  **Clone/Download:** Get all the files from this repository.
 
@@ -111,5 +127,8 @@ The project is configured with `electron-builder` to generate ready-to-run execu
 | **Current OS (All)** | `npm run build:all` | Target for the current OS |
 
 ## Disclaimer
+
+Please make sure to follow all legal and ethical guidelines when using this program.
+Downloading and using copyrighted material without proper authorization may violate copyright laws in your country.
 
 This is a web-scraping tool. Please be respectful of [Myrient's](https://myrient.erista.me/) bandwidth and service. This tool would not exist if it wasn't for them.
